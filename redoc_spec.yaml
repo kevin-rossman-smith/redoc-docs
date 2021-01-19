@@ -1,0 +1,3236 @@
+openapi: 3.0.1
+info:
+  title: B2C Documentation
+  version: v0
+  contact:
+    name: API Support
+    email: supportapi@crscreditapi.com
+    url: https://crscreditapi.com/
+  x-logo:
+    url: './images/logo.png'
+    altText: CRS logo
+    
+  description: 
+    <p>
+    Equifax end-points are accessible first using the User API <strong>/users/efx-config</strong> response data and the Equifax <strong>/oauth/token</strong> calls.
+    </p><p>
+    <strong>User API</strong> and <strong>Equifax API</strong> calls are intended to be called directly from the end-client. 
+    </p><p>
+    It is not acceptable to pass any of the data to these calls or responses from these calls to your server.
+    <p>
+    Do not save any data. Short term caching is fine, but long-term storage is not.
+    </p><p>
+    The preauth token is only valid for 30 seconds
+    <br>
+    </p><p>
+    <em><strong>Direct API</strong> calls must originate from your server</em>
+    </p><p>
+    <em>
+    <strong>User API</strong> calls must originate from the consumer app_
+    </em>
+    </p>
+
+    
+servers:
+  - url: 'http://efx-dev.stitchcredit.com/api'
+    description: Generated server url
+    
+paths:
+
+  #Create New User 1-2
+  /direct/login:
+    post:
+      tags:
+        - Direct API
+        - Create New User
+        - Returning User
+      summary: Customer Login
+      description: Using your credentials in the request body (\"apikey\" and \"secret\"), the response will contain the _token_ and _refresh_ token.
+        <br>
+        These tokens are required for completing the other requests to __Direct API__ endpoints.
+        <br></br>
+        This _token_ will be valid for approximately one hour. 
+        <br>
+        After the one hour, the refresh token will become valid. 
+        <br></br>
+        If the token expires, use the following endpoint with the _refresh token_ to get a new token <br>
+        __/direct/refresh-token?token={_refresh_}__
+        
+      operationId: login_1
+      requestBody:
+        description: 
+          Add your credentials to \"apikey\" and \"secret\". 
+          <br>
+          _(keep these credentials a secret)_
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DirectLoginReqDTO'
+        required: true
+      responses:
+        '200':
+          description: 
+            This response contains a __token__ and a __refresh token__.
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/LoginRespDTO'     
+          links:
+            directToken:            # <---- arbitrary name for the link
+              operationId: userReg  # or operationRef: '#/paths/~1users~1{userId}/get'
+              parameters:
+                directToken: '$response.body#/token'
+              description: 
+                The `id` value returned in the response can be used as
+                the `userId` parameter in `GET /users/{userId}`.
+          # -----------------------------------------------------
+  /direct/user-reg:
+    post:
+      tags:
+        - Direct API
+        - Create New User
+      summary: Register New User
+      description: 
+        Creates a new user with unique __userId__ and __preauth token__.
+        <br></br>
+        When a user logs back in, use __/direct/preauth-token/{{userId}}__ to generate that user a new __preauth token__ and a new __userId__ (refer to __Returning Users__
+        <br></br>
+        _Don't store the preauth token across sessions. <br>
+        Use the userId from the previous session to generate a new userId and a new preauth token._
+      operationId: userReg
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DirectUserRegReqDTO'
+        required: true
+      responses:
+        '200':
+          description: This response contains __userId__ and __preauth token__
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/PreauthTokenDTO'  
+  /direct/register:
+    post:
+      tags:
+        - Direct API
+      operationId: register_1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DirectUserRegReqDTO'
+        required: true
+      responses:
+        '200':
+          description: default response
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/UserLoginRespDTO'
+  /direct/refresh-token:
+    get:
+      tags:
+        - Direct API
+      operationId: refresh_1
+      parameters:
+        - name: token
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: default response
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/LoginRespDTO'
+  '/direct/change-mobile/{id}':
+    post:
+      tags:
+        - Direct API
+      operationId: changeMobile
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DirectChangeMobileReqDTO'
+        required: true
+      responses:
+        '200':
+          description: default response
+          content:
+            '*/*':
+              schema:
+                type: object
+  /direct/change-notifications:
+    post:
+      tags:
+        - Direct API
+      operationId: setNotifications
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserNotificationsPref'
+        required: true
+      responses:
+        '200':
+          description: default response
+          content:
+            '*/*':
+              schema:
+                type: object
+  '/direct/change-host/{id}':
+    post:
+      tags:
+        - Direct API
+      operationId: changeHost
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: host
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: default response
+          content:
+            '*/*':
+              schema:
+                type: object
+  '/direct/update-refresh/{id}':
+    post:
+      tags:
+        - Direct API
+      operationId: resetRefresh
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: rmonly
+          in: query
+          required: true
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: default response
+          content:
+            '*/*':
+              schema:
+                type: object
+  '/direct/efx-alert/{id}':
+    get:
+      tags:
+        - Direct API
+      operationId: getEfxAlert
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: default response
+          content:
+            '*/*':
+              schema:
+                type: object
+  '/direct/user-token/{id}':
+    get:
+      tags:
+        - Direct API
+      operationId: userToken
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: default response
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/UserLoginRespDTO'
+  '/direct/preauth-token/{userId}':
+    get:
+      tags:
+        - Direct API
+        - Returning User
+      operationId: preauthToken
+      summary: New User Token
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: default response
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/PreauthTokenDTO'
+  '/direct/efx-config/{id}':
+    get:
+      tags:
+        - Direct API
+      operationId: getEfxConfig_1
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: default response
+          content:
+            '*/*':
+              schema:
+                type: object
+  '/direct/efx-scores/{id}':
+    get:
+      tags:
+        - Direct API
+      operationId: getEfxScores_1
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: default response
+          content:
+            '*/*':
+              schema:
+                type: object
+  '/direct/efx-score-history/{id}':
+    get:
+      tags:
+        - Direct API
+      operationId: getEfxScoreHistory_1
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: default response
+          content:
+            '*/*':
+              schema:
+                type: object
+  '/direct/efx-latest-scores/{id}':
+    get:
+      tags:
+        - Direct API
+      operationId: getEfxLatestScores_1
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: default response
+          content:
+            '*/*':
+              schema:
+                type: object
+  '/direct/efx-latest-efx-score/{id}':
+    get:
+      tags:
+        - Direct API
+      operationId: getEfxLatestEFXScore_1
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: default response
+          content:
+            '*/*':
+              schema:
+                type: object
+  '/direct/change-email/{id}':
+    post:
+      tags:
+        - Direct API
+      operationId: changeEmail_1
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DirectChangeEmailReqDTO'
+        required: true
+      responses:
+        '200':
+          description: default response
+          content:
+            '*/*':
+              schema:
+                type: object
+  '/direct/close-account/{id}':
+    post:
+      tags:
+        - Direct API
+      operationId: closeAccount_1
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: default response
+          content:
+            '*/*':
+              schema:
+                type: object
+
+  '/users/preauth-token/{userId}':
+    get:
+      tags:
+        - User API
+        - Create New User
+        - Returning User
+      summary: Preauth Token
+      description: 
+        This request uses __userId__ (from response of __/direct/user-reg__) to generate a __preauth
+        token__. 
+        <br></br>
+        The __preauth token__ is a bearer token that must be passed to the consumer's device so that the consumer app can directly complete __User API__ requests. 
+        <br></br>
+        _The preauth token is also generated by __/direct/user-reg/__ when registering a new user_
+      operationId: preauth
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: default response
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/UserLoginRespDTO'
+  /users/identity:
+    post:
+      tags:
+        - User API
+        - Create New User
+      summary: User Identity
+      description: 
+        This is most useful for checking whether the user's identity needs to be verified. 
+        <br></br>
+        If the response has __idpass__ set to _true_, then the user's identity is already verified.
+        <br></br>
+        If __idpass__ is _false_, then the user's identity needs to be verified. The user's identity can then be verified starting with __/users/get-mobile__ (phone sms verification) or starting with __/users/get-quiz__ (an identity quiz)
+        <br></br>
+        The user's identity must be verified in order to enable the user's device to request the __Equifax config__. The __Equifax config__ enables the consumer app to make requests to the Equifax API.
+      operationId: identity
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IdentityReqDTO'
+        required: true
+      responses:
+        '200':
+          description: 
+            The Response contains identity information and the status of \"idpass\".
+            <br>
+              \"idpass\" represents whether the user has been verified yet.
+              (users can be verified with phone sms verification or an identity quiz)
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/UserRespDTO'                
+  /users/get-mobile:
+    get:
+      tags:
+        - User API
+        - Create New User
+      summary: Phone Verify
+      description: todo
+      operationId: getMobile
+      responses:
+        '200':
+          description: default response
+          content:
+            '*/*':
+              schema:
+                type: object                
+  '/users/send-code/{token}':
+    post:
+      tags:
+        - User API
+        - Create New User
+      summary: Send Mobile Code
+      description: todo
+      operationId: sendCode
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: default response
+          content:
+            '*/*':
+              schema:
+                type: object
+  /users/verify-code:
+    post:
+      tags:
+        - User API
+        - Create New User
+      summary: Verify Mobile Code
+      description: todo
+      operationId: verifyCode
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserOtpReqDTO'
+        required: true
+      responses:
+        '200':
+          description: default response
+          content:
+            '*/*':
+              schema:
+                type: object
+  /users/efx-config:
+    get:
+      tags:
+        - User API
+        - Create New User
+        - Returning User
+      summary: Get EFX Config
+      description: 
+        Use this endpoint to get the Equifax credentials and url, which will be needed for the consumer app to send requests to the Equifax API to retrieve credit information.
+      operationId: getEfxConfig
+      responses:
+        '200':
+          description: the response contains config data to be used for authenticating the consumer app to make requests directly to the Equifax API
+          content: 
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/EFXConfigRespDTO'
+  '/{efx_url}/oauth/token':
+    post:
+      parameters:
+      - in: path
+        name: efx_url
+        schema:
+          type: string
+          example: https://api.UrlFromResponseOf_EFXconfig.com/consumer-data
+        required: true
+      servers:
+      - url: https://api.uat.equifax.com/personal/consumer-data-suite
+        description: this path has a different base url.
+      tags:
+        - Create New User
+        - Returning User
+      summary: OAuth Token
+      description: The response from __/users/efx-config__ contains a \"url\", which should be used as the {efx_url} parameter for this endpoint. 
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            encoding: {}
+            schema:
+              required:
+              - scope
+              - grant_type
+              - api_key
+              - client_assertion
+              type: object
+              properties:
+                scope:
+                  type: string
+                  example: delivery
+                grant_type:
+                  type: string
+                  example: jwt-bearer
+                api_key:
+                  type: string
+                  example: '{{efx_api_key}}'
+                client_assertion:
+                  type: string
+                  example: '{{efx_assertion}}'
+        required: false
+      responses:
+        200:
+          description: ''
+          headers: {}
+      deprecated: false
+
+            
+      
+                
+  '/users/initialize/{key}':
+    get:
+      tags:
+        - User API
+      operationId: initialize
+      parameters:
+        - name: key
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: default response
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/UserConfigDTO'
+  /users/initialize:
+    get:
+      tags:
+        - User API
+      operationId: initialize_1
+      parameters:
+        - name: referer
+          in: header
+          required: false
+          schema:
+            type: string
+        - name: ctoken
+          in: header
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: default response
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/UserConfigDTO'
+
+  /users/register:
+    post:
+      tags:
+        - User API
+      operationId: register
+      parameters:
+        - name: referer
+          in: header
+          required: false
+          schema:
+            type: string
+        - name: ctoken
+          in: header
+          required: false
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserRegReqDTO'
+        required: true
+      responses:
+        '200':
+          description: default response
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/UserLoginRespDTO'
+  /users/refresh-token:
+    get:
+      tags:
+        - User API
+      operationId: refresh
+      parameters:
+        - name: token
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: default response
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/LoginRespDTO'
+
+  /users/start:
+    get:
+      tags:
+        - User API
+      operationId: startUserSession
+      parameters:
+        - name: referer
+          in: header
+          required: false
+          schema:
+            type: string
+        - name: key
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: ocf
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: oct
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: attributes
+          in: query
+          required: true
+          schema:
+            $ref: '#/components/schemas/RedirectAttributes'
+      responses:
+        '200':
+          description: default response
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/RedirectView'
+
+  /users/change-notifications:
+    post:
+      tags:
+        - User API
+      operationId: getUser
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserNotificationsPref'
+        required: true
+      responses:
+        '200':
+          description: default response
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/UserRespDTO'
+  /users:
+    get:
+      tags:
+        - User API
+      operationId: getUser_1
+      responses:
+        '200':
+          description: default response
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/UserRespDTO'
+  /users/login:
+    post:
+      tags:
+        - User API
+      operationId: login
+      parameters:
+        - name: referer
+          in: header
+          required: false
+          schema:
+            type: string
+        - name: ctoken
+          in: header
+          required: false
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginReqDTO'
+        required: true
+      responses:
+        '200':
+          description: default response
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/UserLoginRespDTO'
+  /users/password-recovery:
+    post:
+      tags:
+        - User API
+      operationId: recoverPassword
+      parameters:
+        - name: referer
+          in: header
+          required: false
+          schema:
+            type: string
+        - name: ctoken
+          in: header
+          required: false
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PasswordRecoveryReqDTO'
+        required: true
+      responses:
+        '200':
+          description: default response
+          content:
+            '*/*':
+              schema:
+                type: object
+  /users/recovery-token:
+    post:
+      tags:
+        - User API
+      operationId: recoverQuestion
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TokenReqDTO'
+        required: true
+      responses:
+        '200':
+          description: default response
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ActionTokenRespDTO'
+  /users/password-reset:
+    post:
+      tags:
+        - User API
+      operationId: resetPassword
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PasswordResetReqDTO'
+        required: true
+      responses:
+        '200':
+          description: default response
+          content:
+            '*/*':
+              schema:
+                type: object
+  /users/get-quiz:
+    get:
+      tags:
+        - User API
+      operationId: getQuiz
+      responses:
+        '200':
+          description: default response
+          content:
+            '*/*':
+              schema:
+                type: object
+  /users/verify-quiz:
+    post:
+      tags:
+        - User API
+      operationId: verifyQuiz
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IdentityQuizReqDTO'
+        required: true
+      responses:
+        '200':
+          description: default response
+          content:
+            '*/*':
+              schema:
+                type: object
+
+  /users/renew-code:
+    post:
+      tags:
+        - User API
+      operationId: renewCode
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserRenewOtpReqDTO'
+        required: true
+      responses:
+        '200':
+          description: default response
+          content:
+            '*/*':
+              schema:
+                type: object
+
+  /users/efx-scores:
+    get:
+      tags:
+        - User API
+      operationId: getEfxScores
+      responses:
+        '200':
+          description: default response
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CreditScore'
+  /users/efx-score-history:
+    get:
+      tags:
+        - User API
+      operationId: getEfxScoreHistory
+      responses:
+        '200':
+          description: default response
+          content:
+            '*/*':
+              schema:
+                type: object
+  /users/efx-latest-scores:
+    get:
+      tags:
+        - User API
+      operationId: getEfxLatestScores
+      responses:
+        '200':
+          description: default response
+          content:
+            '*/*':
+              schema:
+                type: object
+  /users/efx-latest-efx-score:
+    get:
+      tags:
+        - User API
+      operationId: getEfxLatestEFXScore
+      responses:
+        '200':
+          description: default response
+          content:
+            '*/*':
+              schema:
+                type: object
+  /users/change-password:
+    post:
+      tags:
+        - User API
+      operationId: changePassword
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChangePasswordReqDTO'
+        required: true
+      responses:
+        '200':
+          description: default response
+          content:
+            '*/*':
+              schema:
+                type: object
+  /users/action-token:
+    post:
+      tags:
+        - User API
+      operationId: getActionToken
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginReqDTO'
+        required: true
+      responses:
+        '200':
+          description: default response
+          content:
+            '*/*':
+              schema:
+                $ref: '#/components/schemas/ActionTokenRespDTO'
+  /users/change-email:
+    post:
+      tags:
+        - User API
+      operationId: changeEmail
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChangeEmailReqDTO'
+        required: true
+      responses:
+        '200':
+          description: default response
+          content:
+            '*/*':
+              schema:
+                type: object
+  /users/change-recovery:
+    post:
+      tags:
+        - User API
+      operationId: changeRecovery
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChangeRecoveryReqDTO'
+        required: true
+      responses:
+        '200':
+          description: default response
+          content:
+            '*/*':
+              schema:
+                type: object
+  /users/close-account:
+    post:
+      tags:
+        - User API
+      operationId: closeAccount
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CloseAccountReqDTO'
+        required: true
+      responses:
+        '200':
+          description: default response
+          content:
+            '*/*':
+              schema:
+                type: object
+components:
+  schemas:
+    EFXConfigRespDTO:
+      type: object
+      properties:
+        secret:
+          type: string
+          example: klUAnAFTtK7noBjUqO6x4anUszGrwrQdqelNp1N1XvssztqxFVfDp32dNgrco7ErVHYNH9lGUThExMvXQ3KnzPXrEBl5dkfGX0cHkGKI903jggCy2pc30Zvh0UWO4Hm5J3atOByM3KvSuMYOv6bnpeSRfmSxsZbeaF2gJrDaHS3zdT3SWY01M9CD54jUu6OiQBtxxpZs5aMVzRldf3jpQ1fGTLzlZABPFWqaJvd70vDkRRw98YZ1AWXWg67F1RMrgCknp9k6jQncGVxgFP9i18blXTczccbYdUS3HsBOVsY8AIOOY34WYuTO2K0Q099VsubdN51nTWpzpzyg6TwXjo08mWXzSAa6SHDXJKPvBcanEKdiBPUYkt2dXrAfnFe0kF954xEOTXsoey26tGcdEqbIVMfv0hON6prAaOU4BPQ2rUY5veSlxwDbbJvdAmkxJZoSnqJeP9NxSEPQl23d31sKlJ5FBODaXKUrl8lwARpZMFtVqUbQeNyGUlfrdD3MOT0FZi9vfohO97qt4IFfVRXVXMAO1QXG7Xh7ioggwSoyh1ylRn81AAsdVUpcxxIomc744YwFotdjyIDkLJ0ENFU3X2lsqtB1zpWjCJDwaDqRP9PVGYaAZ7m5gVYPLVOCeiIGHeBs6op4aUudl5hMUI6nGiW1uU9fH51w6WsIpfjqfolyJSSHf0EpPB5jnov6o0y0Cyf81QSlmrTGcGXChcpjq6cRx780culj3fKC1C8QSQvwoSGvEAIGz8Tpi1uTSEPtGyUVEmG21beirygZtIpogHBe0cja9UC62O1jEv46qKOeyuXfvGAcCJkOm94LINHqk5bSoTa8ud8je1G49xMojJBkdw3U7cwJgXO6U0mOBAsdSC0Agtc9UWw7GD96wBJ56EUlb5C9uPXoHFrlRYChctcbiAYUWbtYraYgfA7u8CAJldZiNgX50g2V2dUWMYOSjcVJpK9ndpCt4q8xEO6ogHsSXRDJ8u9FMBfFXfJ0FkEswiu1qNVzojKefJcN7o2NJBsuJm666oNthEXXQd1aeVagtmAQXIZ5ZCFJxj0xdwp778gZFfDnXmdzLMI4CdesK4w6wnmn0pKBqod8PoUzIkzzOifZsGtpL8fkR5ntbs1o9YlJMCTZOptZnvwL1FkuitkXXZOmkWkM9tqub0loayrPhBsZbzCxklpedW6mNn8G5y76Dq5KKL1KWgTAh4fjzKsMY0ikDftcMH0GkqhW7Gd7qeyaUBoNlZcb0vRsCDmLttzRHCemJS4JrEbgoH2BIKtgkndz25YMJ85mjiF8Qg3
+        id:
+          type: string
+          example: 73b2e701-f730-1b90-af38-a492f73b2881_delivery
+        url:
+          type: string
+          format: url
+          example: https://example-efx-url.com/person/consumer-credsuite
+    UserConfigDTO:
+      type: object
+      properties:
+        theme:
+          type: string
+        logo:
+          type: string
+        flags:
+          type: integer
+          format: int32
+    IdentityReqDTO:
+      required:
+        - city
+        - ssn
+        - state
+        - street1
+        - zip
+      type: object
+      properties:
+        dob:
+          type: string
+          format: date
+          example: "1972-07-02"
+        mobile:
+          maxLength: 10
+          minLength: 10
+          type: string
+          example: "0000000000"
+        ssn:
+          maxLength: 9
+          minLength: 9
+          type: string
+          example: "666296598"
+        street1:
+          type: string
+          example: "6939 W GEORGE ST"
+        street2:
+          type: string
+          example: "11169"
+        city:
+          type: string
+          example: "BOTHELL"
+        state:
+          maxLength: 2
+          minLength: 2
+          type: string
+          example: "WA"
+        zip:
+          maxLength: 5
+          minLength: 5
+          type: string
+          example: "98011"
+        country:
+          type: string
+    UserRespDTO:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+        fname:
+          type: string
+        lname:
+          type: string
+        idpass:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        smsMsg:
+          type: boolean
+        emailMsg:
+          type: boolean
+        pushMsg:
+          type: boolean
+        flags:
+          type: integer
+          format: int32
+    UserRegReqDTO:
+      required:
+        - email
+        - fname
+        - lname
+        - password
+        - recoveryAnswer
+        - recoveryQuestion
+      type: object
+      properties:
+        email:
+          type: string
+        mobile:
+          maxLength: 10
+          minLength: 10
+          type: string
+        fname:
+          type: string
+        lname:
+          type: string
+        password:
+          maxLength: 20
+          minLength: 8
+          type: string
+        recoveryQuestion:
+          type: integer
+          format: int32
+        recoveryAnswer:
+          type: string
+        smsMsg:
+          type: boolean
+        emailMsg:
+          type: boolean
+        pushMsg:
+          type: boolean
+    UserLoginRespDTO:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+        fname:
+          type: string
+        lname:
+          type: string
+        idpass:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        smsMsg:
+          type: boolean
+        emailMsg:
+          type: boolean
+        pushMsg:
+          type: boolean
+        flags:
+          type: integer
+          format: int32
+        token:
+          type: string
+        expires:
+          type: integer
+          format: int64
+        refresh:
+          type: string
+    LoginRespDTO:
+      type: object
+      properties:
+        token:
+          type: string
+          example: "XMBHQKUl4iK34hjSYD5rgjvQLHCrVPBgPEp9bTU3TTbX8P9rIiNX1l80VUQ8"
+        expires:
+          type: integer
+          format: int64
+          example: 3600
+        refresh:
+          type: string
+          example: "z1x3kG4dqLs6WTG2WxFkvVppJ2Gh6kjWayFqlkdnt6Sik2Fn6f5EQ7fGv4xZ"
+    RedirectAttributes:
+      type: object
+      properties:
+        flashAttributes:
+          type: object
+          additionalProperties:
+            type: object
+    ApplicationContext:
+      type: object
+      properties:
+        parent:
+          $ref: '#/components/schemas/ApplicationContext'
+        id:
+          type: string
+        displayName:
+          type: string
+        applicationName:
+          type: string
+        startupDate:
+          type: integer
+          format: int64
+        autowireCapableBeanFactory:
+          $ref: '#/components/schemas/AutowireCapableBeanFactory'
+        environment:
+          $ref: '#/components/schemas/Environment'
+        beanDefinitionCount:
+          type: integer
+          format: int32
+        beanDefinitionNames:
+          type: array
+          items:
+            type: string
+        parentBeanFactory:
+          $ref: '#/components/schemas/BeanFactory'
+        classLoader:
+          type: object
+          properties:
+            parent:
+              type: object
+              properties:
+                name:
+                  type: string
+                unnamedModule:
+                  type: object
+                  properties:
+                    layer:
+                      type: object
+                    name:
+                      type: string
+                    descriptor:
+                      type: object
+                      properties:
+                        open:
+                          type: boolean
+                        automatic:
+                          type: boolean
+                    classLoader:
+                      type: object
+                      properties:
+                        name:
+                          type: string
+                        defaultAssertionStatus:
+                          type: boolean
+                          writeOnly: true
+                        registeredAsParallelCapable:
+                          type: boolean
+                        definedPackages:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              name:
+                                type: string
+                              annotations:
+                                type: array
+                                items:
+                                  type: object
+                              declaredAnnotations:
+                                type: array
+                                items:
+                                  type: object
+                              sealed:
+                                type: boolean
+                              specificationTitle:
+                                type: string
+                              specificationVersion:
+                                type: string
+                              specificationVendor:
+                                type: string
+                              implementationTitle:
+                                type: string
+                              implementationVersion:
+                                type: string
+                              implementationVendor:
+                                type: string
+                    annotations:
+                      type: array
+                      items:
+                        type: object
+                    declaredAnnotations:
+                      type: array
+                      items:
+                        type: object
+                    named:
+                      type: boolean
+                    packages:
+                      uniqueItems: true
+                      type: array
+                      items:
+                        type: string
+                defaultAssertionStatus:
+                  type: boolean
+                  writeOnly: true
+                registeredAsParallelCapable:
+                  type: boolean
+                definedPackages:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      name:
+                        type: string
+                      annotations:
+                        type: array
+                        items:
+                          type: object
+                      declaredAnnotations:
+                        type: array
+                        items:
+                          type: object
+                      sealed:
+                        type: boolean
+                      specificationTitle:
+                        type: string
+                      specificationVersion:
+                        type: string
+                      specificationVendor:
+                        type: string
+                      implementationTitle:
+                        type: string
+                      implementationVersion:
+                        type: string
+                      implementationVendor:
+                        type: string
+            name:
+              type: string
+            unnamedModule:
+              type: object
+              properties:
+                layer:
+                  type: object
+                name:
+                  type: string
+                descriptor:
+                  type: object
+                  properties:
+                    open:
+                      type: boolean
+                    automatic:
+                      type: boolean
+                classLoader:
+                  type: object
+                  properties:
+                    name:
+                      type: string
+                    defaultAssertionStatus:
+                      type: boolean
+                      writeOnly: true
+                    registeredAsParallelCapable:
+                      type: boolean
+                    definedPackages:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          name:
+                            type: string
+                          annotations:
+                            type: array
+                            items:
+                              type: object
+                          declaredAnnotations:
+                            type: array
+                            items:
+                              type: object
+                          sealed:
+                            type: boolean
+                          specificationTitle:
+                            type: string
+                          specificationVersion:
+                            type: string
+                          specificationVendor:
+                            type: string
+                          implementationTitle:
+                            type: string
+                          implementationVersion:
+                            type: string
+                          implementationVendor:
+                            type: string
+                annotations:
+                  type: array
+                  items:
+                    type: object
+                declaredAnnotations:
+                  type: array
+                  items:
+                    type: object
+                named:
+                  type: boolean
+                packages:
+                  uniqueItems: true
+                  type: array
+                  items:
+                    type: string
+            defaultAssertionStatus:
+              type: boolean
+              writeOnly: true
+            registeredAsParallelCapable:
+              type: boolean
+            definedPackages:
+              type: array
+              items:
+                type: object
+                properties:
+                  name:
+                    type: string
+                  annotations:
+                    type: array
+                    items:
+                      type: object
+                  declaredAnnotations:
+                    type: array
+                    items:
+                      type: object
+                  sealed:
+                    type: boolean
+                  specificationTitle:
+                    type: string
+                  specificationVersion:
+                    type: string
+                  specificationVendor:
+                    type: string
+                  implementationTitle:
+                    type: string
+                  implementationVersion:
+                    type: string
+                  implementationVendor:
+                    type: string
+    AutowireCapableBeanFactory:
+      type: object
+    BeanFactory:
+      type: object
+    Environment:
+      type: object
+      properties:
+        activeProfiles:
+          type: array
+          items:
+            type: string
+        defaultProfiles:
+          type: array
+          items:
+            type: string
+    RedirectView:
+      type: object
+      properties:
+        applicationContext:
+          $ref: '#/components/schemas/ApplicationContext'
+        servletContext:
+          type: object
+          properties:
+            classLoader:
+              type: object
+              properties:
+                name:
+                  type: string
+                defaultAssertionStatus:
+                  type: boolean
+                  writeOnly: true
+                registeredAsParallelCapable:
+                  type: boolean
+                definedPackages:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      name:
+                        type: string
+                      annotations:
+                        type: array
+                        items:
+                          type: object
+                      declaredAnnotations:
+                        type: array
+                        items:
+                          type: object
+                      sealed:
+                        type: boolean
+                      specificationTitle:
+                        type: string
+                      specificationVersion:
+                        type: string
+                      specificationVendor:
+                        type: string
+                      implementationTitle:
+                        type: string
+                      implementationVersion:
+                        type: string
+                      implementationVendor:
+                        type: string
+            majorVersion:
+              type: integer
+              format: int32
+            minorVersion:
+              type: integer
+              format: int32
+            attributeNames:
+              type: object
+            contextPath:
+              type: string
+            initParameterNames:
+              type: object
+            sessionTrackingModes:
+              uniqueItems: true
+              type: array
+              writeOnly: true
+              items:
+                type: string
+                enum:
+                  - COOKIE
+                  - URL
+                  - SSL
+            servletNames:
+              type: object
+            sessionTimeout:
+              type: integer
+              format: int32
+            effectiveMajorVersion:
+              type: integer
+              format: int32
+            effectiveMinorVersion:
+              type: integer
+              format: int32
+            servlets:
+              type: object
+            serverInfo:
+              type: string
+            servletContextName:
+              type: string
+            servletRegistrations:
+              type: object
+              additionalProperties:
+                type: object
+                properties:
+                  mappings:
+                    type: array
+                    items:
+                      type: string
+                  runAsRole:
+                    type: string
+                  name:
+                    type: string
+                  className:
+                    type: string
+                  initParameters:
+                    type: object
+                    additionalProperties:
+                      type: string
+            filterRegistrations:
+              type: object
+              additionalProperties:
+                type: object
+                properties:
+                  servletNameMappings:
+                    type: array
+                    items:
+                      type: string
+                  urlPatternMappings:
+                    type: array
+                    items:
+                      type: string
+                  name:
+                    type: string
+                  className:
+                    type: string
+                  initParameters:
+                    type: object
+                    additionalProperties:
+                      type: string
+            sessionCookieConfig:
+              type: object
+              properties:
+                name:
+                  type: string
+                path:
+                  type: string
+                comment:
+                  type: string
+                secure:
+                  type: boolean
+                maxAge:
+                  type: integer
+                  format: int32
+                domain:
+                  type: string
+                httpOnly:
+                  type: boolean
+            defaultSessionTrackingModes:
+              uniqueItems: true
+              type: array
+              items:
+                type: string
+                enum:
+                  - COOKIE
+                  - URL
+                  - SSL
+            effectiveSessionTrackingModes:
+              uniqueItems: true
+              type: array
+              items:
+                type: string
+                enum:
+                  - COOKIE
+                  - URL
+                  - SSL
+            jspConfigDescriptor:
+              type: object
+              properties:
+                taglibs:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      taglibURI:
+                        type: string
+                      taglibLocation:
+                        type: string
+                jspPropertyGroups:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      buffer:
+                        type: string
+                      pageEncoding:
+                        type: string
+                      isXml:
+                        type: string
+                      includePreludes:
+                        type: array
+                        items:
+                          type: string
+                      includeCodas:
+                        type: array
+                        items:
+                          type: string
+                      deferredSyntaxAllowedAsLiteral:
+                        type: string
+                      trimDirectiveWhitespaces:
+                        type: string
+                      errorOnUndeclaredNamespace:
+                        type: string
+                      elIgnored:
+                        type: string
+                      scriptingInvalid:
+                        type: string
+                      defaultContentType:
+                        type: string
+                      urlPatterns:
+                        type: array
+                        items:
+                          type: string
+            virtualServerName:
+              type: string
+            requestCharacterEncoding:
+              type: string
+            responseCharacterEncoding:
+              type: string
+          writeOnly: true
+        contentType:
+          type: string
+        requestContextAttribute:
+          type: string
+        staticAttributes:
+          type: object
+          additionalProperties:
+            type: object
+        exposePathVariables:
+          type: boolean
+        exposeContextBeansAsAttributes:
+          type: boolean
+          writeOnly: true
+        exposedContextBeanNames:
+          type: array
+          writeOnly: true
+          items:
+            type: string
+        beanName:
+          type: string
+        url:
+          type: string
+        contextRelative:
+          type: boolean
+          writeOnly: true
+        http10Compatible:
+          type: boolean
+          writeOnly: true
+        exposeModelAttributes:
+          type: boolean
+          writeOnly: true
+        encodingScheme:
+          type: string
+          writeOnly: true
+        statusCode:
+          type: string
+          writeOnly: true
+          enum:
+            - 100 CONTINUE
+            - 101 SWITCHING_PROTOCOLS
+            - 102 PROCESSING
+            - 103 CHECKPOINT
+            - 200 OK
+            - 201 CREATED
+            - 202 ACCEPTED
+            - 203 NON_AUTHORITATIVE_INFORMATION
+            - 204 NO_CONTENT
+            - 205 RESET_CONTENT
+            - 206 PARTIAL_CONTENT
+            - 207 MULTI_STATUS
+            - 208 ALREADY_REPORTED
+            - 226 IM_USED
+            - 300 MULTIPLE_CHOICES
+            - 301 MOVED_PERMANENTLY
+            - 302 FOUND
+            - 302 MOVED_TEMPORARILY
+            - 303 SEE_OTHER
+            - 304 NOT_MODIFIED
+            - 305 USE_PROXY
+            - 307 TEMPORARY_REDIRECT
+            - 308 PERMANENT_REDIRECT
+            - 400 BAD_REQUEST
+            - 401 UNAUTHORIZED
+            - 402 PAYMENT_REQUIRED
+            - 403 FORBIDDEN
+            - 404 NOT_FOUND
+            - 405 METHOD_NOT_ALLOWED
+            - 406 NOT_ACCEPTABLE
+            - 407 PROXY_AUTHENTICATION_REQUIRED
+            - 408 REQUEST_TIMEOUT
+            - 409 CONFLICT
+            - 410 GONE
+            - 411 LENGTH_REQUIRED
+            - 412 PRECONDITION_FAILED
+            - 413 PAYLOAD_TOO_LARGE
+            - 413 REQUEST_ENTITY_TOO_LARGE
+            - 414 URI_TOO_LONG
+            - 414 REQUEST_URI_TOO_LONG
+            - 415 UNSUPPORTED_MEDIA_TYPE
+            - 416 REQUESTED_RANGE_NOT_SATISFIABLE
+            - 417 EXPECTATION_FAILED
+            - 418 I_AM_A_TEAPOT
+            - 419 INSUFFICIENT_SPACE_ON_RESOURCE
+            - 420 METHOD_FAILURE
+            - 421 DESTINATION_LOCKED
+            - 422 UNPROCESSABLE_ENTITY
+            - 423 LOCKED
+            - 424 FAILED_DEPENDENCY
+            - 425 TOO_EARLY
+            - 426 UPGRADE_REQUIRED
+            - 428 PRECONDITION_REQUIRED
+            - 429 TOO_MANY_REQUESTS
+            - 431 REQUEST_HEADER_FIELDS_TOO_LARGE
+            - 451 UNAVAILABLE_FOR_LEGAL_REASONS
+            - 500 INTERNAL_SERVER_ERROR
+            - 501 NOT_IMPLEMENTED
+            - 502 BAD_GATEWAY
+            - 503 SERVICE_UNAVAILABLE
+            - 504 GATEWAY_TIMEOUT
+            - 505 HTTP_VERSION_NOT_SUPPORTED
+            - 506 VARIANT_ALSO_NEGOTIATES
+            - 507 INSUFFICIENT_STORAGE
+            - 508 LOOP_DETECTED
+            - 509 BANDWIDTH_LIMIT_EXCEEDED
+            - 510 NOT_EXTENDED
+            - 511 NETWORK_AUTHENTICATION_REQUIRED
+        expandUriTemplateVariables:
+          type: boolean
+          writeOnly: true
+        propagateQueryParams:
+          type: boolean
+          writeOnly: true
+        hosts:
+          type: array
+          items:
+            type: string
+        redirectView:
+          type: boolean
+        propagateQueryProperties:
+          type: boolean
+        attributesMap:
+          type: object
+          additionalProperties:
+            type: object
+        attributesCSV:
+          type: string
+          writeOnly: true
+        attributes:
+          type: object
+          additionalProperties:
+            type: string
+          writeOnly: true
+    UserNotificationsPref:
+      type: object
+      properties:
+        smsMsg:
+          type: boolean
+        emailMsg:
+          type: boolean
+        pushMsg:
+          type: boolean
+    LoginReqDTO:
+      required:
+        - password
+        - username
+      type: object
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+    PasswordRecoveryReqDTO:
+      required:
+        - email
+      type: object
+      properties:
+        email:
+          type: string
+    TokenReqDTO:
+      required:
+        - token
+      type: object
+      properties:
+        token:
+          type: string
+    ActionTokenRespDTO:
+      type: object
+      properties:
+        token:
+          type: string
+        recoveryQuestion:
+          type: integer
+          format: int32
+    PasswordResetReqDTO:
+      required:
+        - password
+        - recoveryAnswer
+        - token
+      type: object
+      properties:
+        token:
+          type: string
+        recoveryAnswer:
+          type: string
+        password:
+          maxLength: 20
+          minLength: 8
+          type: string
+    Answer:
+      type: object
+      properties:
+        qid:
+          type: integer
+          format: int32
+        aid:
+          type: integer
+          format: int32
+    IdentityQuizReqDTO:
+      required:
+        - id
+        - key
+      type: object
+      properties:
+        key:
+          type: string
+        id:
+          type: integer
+          format: int32
+        answers:
+          type: array
+          items:
+            $ref: '#/components/schemas/Answer'
+    UserOtpReqDTO:
+      required:
+        - code
+        - key
+      type: object
+      properties:
+        key:
+          type: string
+        code:
+          type: string
+    UserRenewOtpReqDTO:
+      required:
+        - key
+      type: object
+      properties:
+        key:
+          type: string
+    CreditScore:
+      type: object
+      properties:
+        generatedDate:
+          type: integer
+          format: int64
+        scoreType:
+          type: string
+        id:
+          type: string
+        creditReportId:
+          type: string
+    ChangePasswordReqDTO:
+      required:
+        - newPassword
+        - oldPassword
+        - username
+      type: object
+      properties:
+        username:
+          type: string
+        oldPassword:
+          type: string
+        newPassword:
+          type: string
+    ChangeEmailReqDTO:
+      required:
+        - email
+        - recoveryAnswer
+        - token
+      type: object
+      properties:
+        email:
+          type: string
+        recoveryAnswer:
+          type: string
+        token:
+          type: string
+    ChangeRecoveryReqDTO:
+      required:
+        - oldRecoveryAnswer
+        - recoveryAnswer
+        - recoveryQuestion
+        - token
+      type: object
+      properties:
+        recoveryQuestion:
+          type: integer
+          format: int32
+        recoveryAnswer:
+          type: string
+        oldRecoveryAnswer:
+          type: string
+        token:
+          type: string
+    CloseAccountReqDTO:
+      required:
+        - recoveryAnswer
+        - token
+      type: object
+      properties:
+        recoveryAnswer:
+          type: string
+        token:
+          type: string
+    DirectUserRegReqDTO:
+      required:
+        - email
+        - fname
+        - lname
+      type: object
+      properties:
+        email:
+          type: string
+          example: "testemail@test"
+        mobile:
+          maxLength: 10
+          minLength: 10
+          type: string
+          example: "0000000000"
+        fname:
+          type: string
+          example: "Donald"
+        lname:
+          type: string
+          example: "Grupp"
+        smsMsg:
+          type: boolean
+        emailMsg:
+          type: boolean
+        pushMsg:
+          type: boolean
+    DirectChangeMobileReqDTO:
+      type: object
+      properties:
+        mobile:
+          maxLength: 10
+          minLength: 10
+          type: string
+    PreauthTokenDTO:
+      type: object
+      properties:
+        userId:
+          type: string
+          format: uuid
+        token:
+          type: string
+    DirectLoginReqDTO:
+      required:
+        - apikey
+        - secret
+      type: object
+      properties:
+        apikey:
+          type: string
+          example: "e36fa60c-1687-f473-af6c-c82f50ace0d6"
+        secret:
+          type: string
+          example: "6d2ca37f-e59b-3382-7520-f701bf3b89d1"
+    DirectChangeEmailReqDTO:
+      required:
+        - email
+      type: object
+      properties:
+        email:
+          type: string
+tags:
+
+#Flows
+- name: API Process Flow
+  description: <img src="./images/apiProcessFlow.png" style="display:flex"></img>
+- name: Communication & Token Flow
+  description: |
+    <img src="./images/CommunicationAndTokenFlow.png" style="display:flex"></img>
+    * The objective of using tokens is to reduce the use of API Keys and/or Password tokens, improving security by reducing exposure
+    * Tokens further optimize the performance of the system by reducing the number of authentication lookups necessary to complete a request
+    * Multiple different tokens are used to secure different systems and aspects of the application
+    * The Direct Token is used to secure YOUR credentials and access - Your API Key, Secret and the Tokens generated should never leave your server
+    * The Direct API is used to generate pre-auth tokens for consumer client access
+    * Preauth tokens are intended to be sent to the client and exchanged for a user token. They expire quickly and should be exchanged for user tokens right away
+    * User tokens are intended for client API access
+    * EFX Config data is used to retrieve an Equifax OAuth Delivery token
+    * The EFX OAuth Delivery token is locked to the IP that requests it and cannot be used from any other IP
+    * The EFX OAuth Delivery token is required for all Equifax API Requests
+#Compliance
+- name: Overview
+  description: |
+    * Consumers must always know who they are dealing with
+      * Terms of Use and Privacy Policy are from and through StitchCredit – there is no ability to white label this at this time
+    * Content delivered to users must not be misleading in any way
+    * Consumers must know where the data came from
+    * Pages with consumer credit data must be compliant with all data presentation requirements and restrictions, no matter how small
+    * Customers may not access consumer data at any time
+    * Saving data at any time is __NOT PERMITTED__ under any circumstances
+    * Login security must be present:
+      * Account lockout after 5 consecutive failed attempts
+      * Multi-step account recovery process
+- name: Registration 
+  description: |
+    * __Consumers must agree to StitchCredit’s Terms of Use and Privacy Policy _prior to the Identity process___
+    > By clicking "Register” and creating an account you accept StitchCredit’s [Terms of Use](https://efx-dev.stitchcredit.com/terms-of-use "Terms of use") and [Privacy Policy](https://efx-dev.stitchcredit.com/privacy-policy "Privacy Policy"). StitchCredit does not maintain critical personal data, much less sell or otherwise disclose your personal information to anyone else. You may opt-out of email correspondence, except confirmation Emails, which often contain important information about your account.
+    * Linking to the Following Terms of Use and Privacy Policy is advised to maintain the latest verbiage
+      * StitchCredit Terms of Use
+        * https://app.termly.io/embed/terms-of-use/cd8446e8-9910-4a02-8f7c-36d9921a3bc7
+      * StitchCredit Privacy Policy
+        * https://app.termly.io/embed/terms-of-use/958f774c-a642-41e7-9696-7ac060bdf44c
+    
+    <div class="row" style="display: flex">
+      <div class="column" style="flex: 50%; padding: 5px;">
+        <img src="./images/SignUp.png" alt="Image of page example for Sign Up" style="width:100%">
+      </div>
+      <div class="column" style="flex: 50%; padding: 5px;">
+        <img src="./images/RegisterTermsOfUse.png" alt="Image of page example for Registering Terms of Use" style="width:100%">
+      </div>
+    </div>
+- name: Identity
+  description: |
+    * Consumers must be notified and express specific consent to access third party data to verify identity
+    > You understand that by clicking “Continue”, you are explicitly agreeing to and providing “written instructions” to StitchCredit under the Fair Credit Reporting Act to obtain my credit information from one or more of the three nationwide credit reporting agencies. Third-party sources, including your mobile carrier may be used to verify your identity. You authorize StitchCredit to obtain such information for you to confirm your identity, and, for as long as you are a member of StitchCredit, to provide you with your credit information. You may elect to terminate your account and this authorization at any time.
+    <div class="row" style="display: flex">
+      <div class="column" style="flex: 50%; padding: 5px;">
+        <img src="./images/IdentityExample.png" alt="Image of identity page example" style="width:100%">
+      </div>
+      <div class="column" style="flex: 50%; padding: 5px;">
+        <img src="./images/IdentityConsumerConsent.png" alt="Image of page example for consumer consent to access third party data to verify identity" style="width:100%">
+      </div>
+    </div>
+- name: Mobile Identification (Option 1)
+  description: |
+    * Users must consent to receiving an SMS message for authentication – note that not all users will qualify to do mobile identification, roughly 60% do at the moment.
+    > We will attempt to verify your identity by sending a text with a one-time code to your mobile phone number ending in xxxx.
+    <br>
+    > Message and data rates may apply.
+    <div class="row" style="display: flex">
+      <div class="column" style="flex: 50%; padding: 5px;">
+        <img src="./images/MobileIdentification.png" alt="Image of mobile identification page example" style="width:50%">
+      </div>
+    </div>
+- name: Identity Quiz (Option 2)
+  description: |
+    * Users who don’t qualify or are unable to pass mobile verification must pass an identity quiz.
+    * Users will have at most 2 chances to pass a quiz, assuming enough questions can be generated.
+    * Users may re-enter and try to pass the identity quiz again, however two attempts (2 chances each) is the limit and will result in a 72-hr lockout.
+    <div class="row" style="display: flex">
+      <div class="column" style="flex: 50%; padding: 5px;">
+        <img src="./images/IdentityQuiz.png" alt="Image of identity quiz page example" style="width:50%">
+      </div>
+    </div>
+- name: Credit Score - Dashboard
+  description: |
+    * The provider of the score is required – do not use a logo, you must have marketing approval from a bureau to use their logo
+    * VantageScore 3.0 – must be present, just like that (VantageScore is one word and it’s a brand, ignore the mistake in this image)
+    * The date the score was pulled is required
+    * The date the next score will be available is strongly encouraged, this is based on the weekly or monthly refresh you subscribe to
+    * VantageScore 3.0 is known as an “educational score” and may differ from the Fico Score used to determine credit availability – notice must be given
+    <div class="row" style="display: flex">
+      <div class="column" style="flex: 50%; padding: 5px;">
+        <img src="./images/CreditScoreDashboard.png" alt="Image of credit score dashboard page example" style="width:50%">
+      </div>
+    </div>
+- name: Credit Report
+  description: |
+    * The provider of the report is required
+    * The date the report was pulled is required
+    <div class="row" style="display: flex">
+      <div class="column" style="flex: 50%; padding: 5px;">
+        <img src="./images/CreditReport.png" alt="Image of credit report page example" style="width:50%">
+      </div>
+    </div>
+- name: Credit Monitoring
+  description: |
+    * The provider of the alert is required
+    * The date of the alert is required
+    <div class="row" style="display: flex">
+      <div class="column" style="flex: 50%; padding: 5px;">
+        <img src="./images/CreditMonitoring.png" alt="Image of credit report page example" style="width:50%">
+      </div>
+    </div>
+- name: Identity Restoration
+  description: |
+    * This product content must be delivered as is
+    
+    > * Equifax® ID Restoration
+    > * Has your identity been compromised?
+    > * A specialist will help you work through the process.
+    > * Once your issues are resolved, we continue to monitor the situation for three months.
+    > * Call today so that we may help you verify and begin resolving any discrepancies.
+    > * Call 1-877-368-4940 today to get started
+    <div class="row" style="display: flex">
+      <div class="column" style="flex: 50%; padding: 5px;">
+        <img src="./images/IdentityRestoration.png" alt="Image of identity restoration page example" style="width:50%">
+      </div>
+    </div>
+
+
+- name: Token Validity Times
+  description: |
+    <div style= display: table; clear: both;">
+      <div style="float: left; width: 50%;">
+        <p>
+          <strong>Direct Tokens</strong>
+        </p>
+        <p>
+          <strong>Preauth Tokens</strong>
+        </p>
+        <p>
+          <strong>User Tokens</strong>
+        </p>
+        <p>
+          <strong>Mobile Verification Tokens</strong>
+        </p>
+      </div>
+      <div style="float: left; width: 50%;">
+        <p>
+          1 hour
+        </p>
+        <p>
+          30 seconds
+        </p>
+        <p>
+          15 minutes
+        </p>
+        <p>
+          15 minutes
+        </p>
+        <br>
+      </div>
+    </div>
+    <p>
+      <strong>Refresh Tokens</strong> are valid after 15 minutes, and expire after 30 minutes
+    </p>
+    <p>
+      <strong>Customer Tokens</strong> are valid for 1 day (not used in Direct API)
+    </p>
+    <p>
+      <strong>Action Tokens</strong> are valid for 10 minutes (not used in Direct API)
+    </p>
+
+#Integrations
+- name: Direct API Integration Guide
+  description: |
+    * A token from <span style="background-color: #BBEE77">/direct/login</span> is required for all other Direct API <span style="background-color: #FFFF99">end-points in yellow</span>.
+      * It is a bearer authorization token
+    * Once you have a preauth token, returned from <span style="background-color: #FFFF99">/direct/user-reg</span> or <span style="background-color: #FFFF99">/direct/preauth-token</span>, pass it to the consumer and have the consumer app complete the calls directly to the User API end-points in <span style="background-color: #B2FFFF">light blue</span>.
+    * Be sure to __save the ID__ returned from <span style="background-color: #FFFF99">user-reg</span> or you won’t be able to reauthorize the user when they return.
+    * User API end-points <span style="background-color: #CCCCCC">in gray</span> are not available for use when Direct API calls are in play.
+    * All end-points in <span style="background-color: #B2FFFF">light blue</span> are available to the consumer
+    * Equifax end-points are accessible first using the User API /users/efx-config response data and the Equifax /oauth/token calls.
+    * User API and Equifax calls are intended to be called directly from the end-client. It is not acceptable to pass any of the data to these calls or responses from these calls to your server.
+    * Do not save any data. Short term caching is fine, but long-term storage is not.
+    * \*\*_The preauth token is only valid for 30 seconds_
+    <br>
+    
+    ___
+
+    <h3>Direct API End-points:</h3>
+
+    <div style= display: table; clear: both;">
+      <div style="background-color:#BBEE77; float: left; width: 50%;">
+        Customer Login
+      </div>
+      <div style="background-color:#BBEE77;float: left; width: 50%;">
+        /direct/login
+      </div>
+    </div>
+
+    <div style= display: table; clear: both;">
+      <div style="background-color:#FFFF99; float: left; width: 50%;">
+        Register New User
+        <br>
+        New User Token
+        <br>
+        Change Email
+        <br>
+        Change Phone
+        <br>
+        Close Account
+        <br>
+        Update Refresh
+        <br>
+      </div>
+      <div style="background-color:#FFFF99;float: left; width: 50%;">
+        /direct/user-reg
+        <br>
+        /direct/preauth-token
+        <br>
+        /direct/change-email
+        <br>
+        /direct/change-phone
+        <br>
+        /direct/close-account
+        <br>
+        /direct/update-refresh [PREMIUM FEATURE]
+        <br>
+      </div>
+    </div>
+
+    ___
+
+    <h3>User API End-points:</h3>
+
+    <div style= display: table; clear: both;">
+      <div style="background-color:#B2FFFF; float: left; width: 50%;">
+        Preauth Token
+        <br>
+        User Identity
+        <br>
+        Phone Verify
+        <br>
+        Send Mobile Code
+        <br>
+        Renew Mobile Code
+        <br>
+        Verify Mobile Code
+        <br>
+        Get Identity Quiz
+        <br>
+        Verify Identity Quiz
+        <br>
+        Get EFX Config
+      </div>
+      <div style="background-color:#B2FFFF;float: left; width: 50%;">
+        /users/preauth-token
+        <br>
+        /users/identity
+        <br>
+        /users/get-mobile
+        <br>
+        /users/send-code
+        <br>
+        /users/renew-code
+        <br>
+        /users/verify-code
+        <br>
+        /users/get-quiz
+        <br>
+        /users/verify-quiz
+        <br>
+        /users/efx-config
+      </div>
+    </div>
+    <div style= display: table; clear: both;">
+      <div style="background-color:#CCCCCC; float: left; width: 50%;">
+        Start
+        <br>
+        Initialize
+        <br>
+        Customer Login
+        <br>
+        Register New User
+        <br>
+        Password Recovery
+        <br>
+        Recovery Token Verify
+        <br>
+        Password Reset
+        <br>
+        Action Token
+        <br>
+        Change Email
+        <br>
+        Change Phone
+        <br>
+        Change Password
+        <br>
+        Change Recovery
+        <br>
+        Close Account
+        <br>
+      </div>
+      <div style="background-color:#CCCCCC;float: left; width: 50%;">
+        /users/start
+        <br>
+        /users/initialize
+        <br>
+        /users/login
+        <br>
+        /users/register
+        <br>
+        /users/password-recovery
+        <br>
+        /users/recovery-token
+        <br>
+        /users/password-reset
+        <br>
+        /users/action-token
+        <br>
+        /users/change-email
+        <br>
+        /users/change-phone
+        <br>
+        /users/change-password
+        <br>
+        /users/change-recovery
+        <br>
+        /users/close-account
+        <br>
+      </div>
+    </div>
+
+    ___
+
+    <h3>Equifax API End-points:</h3>
+    
+    <div style= display: table; clear: both;">
+      <div style="float: left; width: 50%;">
+        Delivery Token
+        <br>
+        Credit Alerts
+        <br>
+        Credit Score
+        <br>
+        Credit Score History
+        <br>
+        Credit Report List
+        <br>
+        Credit Report
+        <br>
+        Credit Report Summary
+        <br>
+        Credit Report PDF
+        <br>
+      </div>
+      <div style="float: left; width: 50%;">
+        /oauth/token
+        <br>
+        /v1/creditMonitoring
+        <br>
+        /v1/creditScore
+        <br>
+        /v1/creditScore/history
+        <br>
+        /v1/creditReport
+        <br>
+        /v1/creditReport/{reportId}
+        <br>
+        /v1/creditReport/{reportId}/summary
+        <br>
+        /v1/creditReport/{reportId}/print
+        <br>
+      </div>
+    </div>
+
+    ___
+
+    <h3>Update Data Refresh Date [PREMIUM FEATURE]</h3>
+      
+    * A consumer’s score & report data refresh date is set based on the enrollment date.
+    * The purpose of this endpoint is to reset the refresh date and/or pull a new score & report at a new date.
+    * For users who register prior to the desired refresh date, remove their features at the end of the month and re-add them on desired refresh date the following month. 
+      * To remove, must use __/update-refresh?rmonly=true__ 
+    * For users who register after the refresh date, their features may be removed and re-added on the desired refresh date the following month. 
+      * To remove and read use __/update-refresh__
+    
+    ___
+
+    <h3>Change User Host</h3>
+
+    * Configurations are grouped and referred to as hosts
+    * Move users between hosts to change feature sets
+- name: Simple Web Integration
+  description: |
+  
+    <h3>Web Integration Requirements:</h3>
+
+    * <span style="background-color: #FFFF99">API Key</span>
+    * Host Registration (eg your web site address) 
+    * <span style="background-color: #BBEE77">Integration Host & parameters</span>
+    * <span style="background-color: #FF6666">Configuration Flags</span>
+    * <span style="background-color: #B2FFFF">Primary Theme Color (six character hex, without #)</span>    
+    <br>
+
+    __Sample Embed Page:__
+    <br>
+    To embed into HTML, create an iframe as shown in the following example with its __src__ reflecting this color-coded URL:
+    <br>
+    
+    __"<span style="background-color: #BBEE77">https://efx-dev.stitchcredit.com/api/users/start?key=</span><span style="background-color: #FFFF99">[API-KEY]</span><span style="background-color: #BBEE77">&ocf=</span><span style="background-color: #FF6666">[FLAGS]</span><span style="background-color: #BBEE77">&oct=</span><span style="background-color: #B2FFFF">[COLOR]</span>"__
+    
+    <br>
+
+    _Embed example:_
+    ```HTML
+    <html>
+      <head>
+        <title>StitchCredit</title>
+        <meta name="description" content="StitchCredit Consumer Credit Reports"/>
+        <link rel="icon" href="/favicon.ico">
+        <style>
+          body { background: #F9FAFB; }
+          #sc-iframe { border:none;overflow:hidden;padding:0px;margin:0px;
+          width:100%;height:100vh;z-index:1;position:absolute;left:0;top:0; }
+        </style>
+      </head>
+      <body>
+        <iframe id="sc-iframe" src="https://efx-dev.stitchcredit.com/api/users/start?key=[API-KEY]&ocf=[flags]&oct=[color]" width=“100%” height=“100vh”></iframe>
+      </body>
+    </html>
+    ```
+
+- name: App Integration
+  description: |
+    <h3>Sign Up</h3>
+    
+    <br>
+
+    * __Consumers must agree to StitchCredit’s Terms of Use and Privacy Policy _prior to the Identity process___
+    > By clicking "Register” and creating an account you accept StitchCredit’s [Terms of Use](https://efx-dev.stitchcredit.com/terms-of-use "Terms of use") and [Privacy Policy](https://efx-dev.stitchcredit.com/privacy-policy). StitchCredit does not maintain critical personal data, much less sell or otherwise disclose your personal information to anyone else. You may opt-out of email correspondence, except confirmation Emails, which often contain important information about your account.
+    * Linking to the Following Terms of Use and Privacy Policy is advised to maintain the latest verbiage
+      * StitchCredit Terms of Use
+        * https://app.termly.io/embed/terms-of-use/cd8446e8-9910-4a02-8f7c-36d9921a3bc7
+      * StitchCredit Privacy Policy
+        * https://app.termly.io/embed/terms-of-use/958f774c-a642-41e7-9696-7ac060bdf44c
+    
+    <div class="row" style="display: flex">
+      <div class="column" style="flex: 50%; padding: 5px;">
+        <img src="./images/SignUp.png" alt="Image of page example for Sign Up" style="width:100%">
+      </div>
+      <div class="column" style="flex: 50%; padding: 5px;">
+        <img src="./images/RegisterTermsOfUse.png" alt="Image of page example for Registering Terms of Use" style="width:100%">
+      </div>
+    </div>
+
+    <h3>Login</h3>
+
+    <div class="row" style="display: flex">
+      <div class="column" style="flex: 50%; padding: 5px;">
+        <img src="./images/Login.png" alt="Image of credit report page example" style="width:50%">
+      </div>
+    </div>
+
+    <h3>Identity</h3>
+
+    * Consumers must be notified and express specific consent to access third party data to verify identity
+    
+    * Required Identity Consent language:
+    > You understand that by clicking “Continue”, you are explicitly agreeing to and providing “written instructions” to StitchCredit under the Fair Credit Reporting Act to obtain my credit information from one or more of the three nationwide credit reporting agencies. Third-party sources, including your mobile carrier may be used to verify your identity. You authorize StitchCredit to obtain such information for you to confirm your identity, and, for as long as you are a member of StitchCredit, to provide you with your credit information. You may elect to terminate your account and this authorization at any time.
+    <div class="row" style="display: flex">
+      <div class="column" style="flex: 50%; padding: 5px;">
+        <img src="./images/AppIntegrationIdentity.png" alt="Image of identity page example" style="width:100%">
+      </div>
+      <div class="column" style="flex: 50%; padding: 5px;">
+        <img src="./images/AppIntegrationIdentityContinue.png" alt="Image of page example for consumer consent language" style="width:100%">
+      </div>
+    </div>
+
+    <h3>Mobile Verification</h3>
+
+    Mobile Identity Consent language: 
+    > We will attempt to verify your identity by sending a text with a one-time code to your mobile phone number ending in xxxx.
+    
+    > Message and data rates may apply.
+    <div class="row" style="display: flex">
+      <div class="column" style="flex: 50%; padding: 5px;">
+        <img src="./images/AppIntegrationMobileVerificationSend.png" alt="Image of page for sending code via SMS to verify identity" style="width:100%">
+      </div>
+      <div class="column" style="flex: 50%; padding: 5px;">
+        <img src="./images/AppIntegrationMobileVerificationField.png" alt="Image of page for entering identity verifying code via SMS" style="width:100%">
+      </div>
+    </div>
+
+    <h3>Mobile Verification</h3>
+
+    <div class="row" style="display: flex">
+      <div class="column" style="flex: 50%; padding: 5px;">
+        <img src="./images/AppIntegrationIdentityQuizQuestion.png" alt="Image of page for identification quiz" style="width:100%">
+      </div>
+      <div class="column" style="flex: 50%; padding: 5px;">
+        <img src="./images/AppIntegrationIdentityQuizContinue.png" alt="Image of page for successful sign up as a result of successful identification" style="width:100%">
+      </div>
+    </div>
+    
+    
+    <h3>Dashboard/Score</h3>
+
+    <div class="row" style="display: flex">
+      <div class="column" style="flex: 50%; padding: 5px;">
+        <img src="./images/AppIntegrationDashboardScore3.png" alt="Image of page for showing dashboard of scores returned by various bureaus" style="width:100%">
+      </div>
+      <div class="column" style="flex: 50%; padding: 5px;">
+        <img src="./images/AppIntegrationDashboardScore1.png" alt="Image of page for showing score returned by a single bureaus" style="width:100%">
+      </div>
+    </div>
+    
+    <h3>Reports</h3>
+
+    <div class="row" style="display: flex">
+      <div class="column" style="flex: 50%; padding: 5px;">
+        <img src="./images/AppIntegrationReportsReportSummary.png" alt="Image of page for showing report summary" style="width:100%">
+      </div>
+      <div class="column" style="flex: 50%; padding: 5px;">
+        <img src="./images/AppIntegrationReportsCreditAccounts.png" alt="Image of page for showing score credit accounts" style="width:100%">
+      </div>
+    </div>
+    
+    <h3>Monitoring</h3>
+
+    <div class="row" style="display: flex">
+      <div class="column" style="flex: 50%; padding: 5px;">
+        <img src="./images/AppIntegrationMonitoring.png" alt="Image of page showing credit monitoring" style="width:50%">
+      </div>
+    </div>
+
+    <h3>ID Restoration</h3>
+
+    <div class="row" style="display: flex">
+      <div class="column" style="flex: 50%; padding: 5px;">
+        <img src="./images/AppIntegrationIDRestoration.png" alt="Image of page showing ID restoration" style="width:50%">
+      </div>
+    </div>
+- name: Web Integration with Customer Authentication
+  description: |
+    * A token from <span style="background-color: #BBEE77">/direct/login</span> is required for all other Direct API <span style="background-color: #FFFF99">end-points in yellow</span>.
+      * It is a bearer authorization token
+    * Once you have a preauth token, returned from <span style="background-color: #FFFF99">/direct/user-reg</span> or <span style="background-color: #FFFF99">/direct/preauth-token</span>, pass it to the Web UI entry point in the embedded iFrame.
+    * Be sure to __save the ID__ returned from <span style="background-color: #FFFF99">/direct/user-reg</span> or you won’t be able to reauthorize the user when they return.
+    * \*\*_The preauth token is only valid for 30 seconds_  
+    <br>
+    
+    ___
+
+    __<h3>Direct API End-points:</h3>__
+
+    <div style= display: table; clear: both;">
+      <div style="background-color:#BBEE77; float: left; width: 50%;">
+        Customer Login
+      </div>
+      <div style="background-color:#BBEE77;float: left; width: 50%;">
+        /direct/login
+      </div>
+    </div>
+
+    <div style= display: table; clear: both;">
+      <div style="background-color:#FFFF99; float: left; width: 50%;">
+        Register New User
+        <br>
+        New User Token
+        <br>
+        Change Email
+        <br>
+        Change Phone
+        <br>
+        Close Account
+        <br>
+        Update Refresh
+        <br>
+      </div>
+      <div style="background-color:#FFFF99;float: left; width: 50%;">
+        /direct/user-reg
+        <br>
+        /direct/preauth-token
+        <br>
+        /direct/change-email
+        <br>
+        /direct/change-phone
+        <br>
+        /direct/close-account
+        <br>
+        /direct/update-refresh [PREMIUM FEATURE]
+        <br>
+      </div>
+    </div>
+
+    ___
+
+    
+    <h3>Consumer Web with Custom Authentication Requirements:</h3>
+
+    * StitchCredit Registration:
+      * <span style="background-color: #FFFF99">API Key</span>
+      * Host Registration (eg your web site address) 
+      * <span style="background-color: #BBEE77">Integration Host & parameters</span>
+      * <span style="background-color: #FF6666">Configuration Flags</span>
+      * <span style="background-color: #B2FFFF">Primary Theme Color (six character hex, without #)</span>    
+      * <span style="background-color: #CC99CC">Pre-auth token – optional if using postmessage configuration</span> – _see Advanced Embedded Page w/ Messaging_
+    * Only the registered host can serve the UI with the designated API Key
+    * Embed iframe on a blank page under the registered host
+    * Style the iframe/page to suit your needs
+    <br>
+    
+    <h3>Sample iframe with Inline Token:</h3>
+    Create an iframe as shown in the following example with its __src__ reflecting this color-coded URL:
+    
+    <br>
+
+    __"<span style="background-color: #BBEE77">https://efx-dev.stitchcredit.com/login-direct?key=</span><span style="background-color: #FFFF99">[API-KEY]</span><span style="background-color: #BBEE77">&token=</span><span style="background-color: #CC99CC">[PREAUTH-TOKEN]</span><span style="background-color: #BBEE77">&ocf=</span><span style="background-color: #FF6666">[FLAGS]</span><span style="background-color: #BBEE77">&oct=</span><span style="background-color: #B2FFFF">[COLOR]</span>"__
+    
+    <br>
+
+    _Embed example:_
+    ```HTML
+    <html>
+      <head>
+        <title>StitchCredit</title>
+        <meta name="description" content="StitchCredit Consumer Credit Reports"/>
+        <link rel="icon" href="/favicon.ico">
+        <style>
+          body { background: #F9FAFB; }
+          #sc-iframe { border:none;overflow:hidden;padding:0px;margin:0px;
+          width:100%;height:100vh;z-index:1;position:absolute;left:0;top:0; }
+        </style>
+      </head>
+      <body>
+        <iframe id="sc-iframe" src=“https://efx-dev.stitchcredit.com/login-direct?key=[API-KEY]&token=[PREAUTH-TOKEN]&ocf=[FLAGS]&oct=[COLOR]” width=“100%” height=“100vh” frameborder=“0”></iframe>
+    </body>
+    </html>
+    ```
+    
+    <h3>Advanced Embedded Page w/ Messaging</h3>
+    
+    * Facilitates communication between the primary application and the embedded StitchCredit application
+    * Allows customer application to react to changes and events in the StitchCredit application
+    * Customer needs to implement AJAX preauth token generation function, the “getData” implementation in the sample files only work in the testing environment and will not work in production. 
+      * True user authentication and processing must be done server-side.
+    * Sample files show possible usage and event handling (see __Sample Files__ section)
+- name: Create New User
+  description: Call these end-points in the order they are presented to create a new user with Equifax API credentials for retrieving credit information
+- name: Returning User
+  description: Call these end-points in the order they are presented to log an existing user back in and acquire new Equifax API credentials for retrieving credit information
+
+- name: Direct API
+  description: Collection of end-points that should be called from your server.
+- name: User API
+  description: Collection of end-points that should be called from the consumer app.
+
+
+- name: Tabbed User Interface with dynamic Consumer Authentication
+  description: |
+    <h3>Tabbed User Interface with dynamic Consumer Authentication integration</h3>
+    
+    _direct_sample.html:_
+
+    ```HTML
+    <html>
+      <head>
+        <title>StitchCredit</title>
+        <link rel="icon" href="/favicon.ico" />
+        <meta name="description" content="StitchCredit Consumer Credit Reports" />
+        <meta
+        name="viewport"
+        content="minimum-scale=1, initial-scale=1, width=device-width"
+        />
+        <style>
+          html,
+          body {
+            margin: 0;
+            padding: 0;
+            position: relative;
+            background: #eeeeee;
+          }
+          #sc-iframe {
+            margin: 0;
+            padding: 0;
+            z-index: 1;
+            width: 100%;
+            height: 100vh;
+            border: none;
+            overflow: hidden;
+          }
+        </style>
+      </head>
+      <body>
+        <iframe
+        id="sc-iframe" allowTransparency="true"
+        src="https://efx-dev.stitchcredit.com/login-direct?key=5a10e0d7-1dc8-4325-929f-d0d131990527"
+        ></iframe>
+        <script>
+          //this just throws in a default ID if one isn't provided on the query string
+          const id = document.location.search.length > 0 ? document.location.search.split('&')[0].split('=')[1] : '988a6fd7-7297-4757-8b96-907daa14a1f6';
+          console.log("ID: ",id);
+          console.log("Loading Message Listener...");
+
+          window.addEventListener("message", receiveMessage, false);
+
+          function receiveMessage(event) {
+            if(event && event.source && event.data) {
+            // You only need to implement the types that are important/relevant to your use case.
+            if(event.data.type === 'AUTH_REQUIRED') {
+              //The iframe clident will post this message when a valid preauth token does not exist.
+              //Posting a proper message with a preauth token in response allows the client to continue seemlessly.
+              //console.log("Auth Required Event Received");
+              const es = event.source;
+              //this code uses a test endpoint on the server to provide a preauth-token for any user ID without the usual hurdles.
+              //This is ONLY for testing and does not exist in the production environment.
+              getData("https://efx-dev.stitchcredit.com/api/test/preauth-token/"+id, function() {
+                const token = JSON.parse(this.responseText).token;
+                console.log("Status: ", this.status, ", token: ", token);
+                es.postMessage({type: 'PREAUTH', token: this.status == 200 ? token : null},"*");
+              });
+            }
+            else if(event.data.type === 'REG_STARTED') {
+              //only valid for full web implementation, Direct API already creates the customer, so this will never happen in those instances
+              es.postMessage({type: 'REG', data: {fname:"Gertrude", lname:"Harkenreadeo", email: "bryan+21@test.com", mobile: "0000000000"}},"*");
+            }
+            else if(event.data.type === 'IDENTITY_STARTED') {
+              //You could use this function to pre-populate the given fields.  DoB and SSN will never be prepopulated as it violates compliance
+              es.postMessage({type: 'IDENTITY', data: {street1:"", street2: "", city: "", state: "", zip: ""}},"*");
+            }
+            else if(event.data.type === 'LOGIN_SUCCESSFUL') {
+              console.log("User succesfully logged in");
+            }
+            else if(event.data.type === 'LOGIN_FAILED') {
+              //if you see this message more than a few times in a row, it's likely an issue
+              //typically this will only occur for full web implementations, not Direct API
+              console.log("User login failed");
+            }
+            else if(event.data.type === 'USER_ENROLLED') {
+              //User successfully completed identity and has been enrolled for consumer data
+              console.log("User enrollment successful");
+            }
+            else if(event.data.type === 'IDENTITY_FAILED') {
+              //Identity process failed, user is likely "stuck" as they cannot continue
+              console.log("User identity failure");
+            }
+            else if(event.data.type === 'SERVICE_FAILURE') {
+              //Identity process failed most likely due to a service outage, but the user is stuck as they cannot continue without passing identity
+              console.log("Identity service failure");
+            }
+          }
+
+          function getData(req, action) {
+            var xhr = new XMLHttpRequest();
+            xhr.responesType = 'json';
+            xhr.onload = action;
+            xhr.open("GET", req);
+            xhr.setRequestHeader("Content-Type", "application/json");
+            xhr.send();
+          }
+
+        }
+        </script>
+      </body>
+    </html>   
+
+    ```
+- name: All-in-One User Interface with dynamic Consumer Authentication
+  description: |
+    <h3>All-in-One User Interface with dynamic Consumer Authentication integration</h3>
+    
+    _aio_sample.html:_
+
+    ```HTML
+    <html>
+      <head>
+        <title>StitchCredit</title>
+        <link rel="icon" href="/favicon.ico" />
+        <meta name="description" content="StitchCredit Consumer Credit Reports" />
+        <meta
+          name="viewport"
+          content="minimum-scale=1, initial-scale=1, width=device-width"
+        />
+        <style>
+          html,
+          body {
+            margin: 0;
+            padding: 0;
+            position: relative;
+            background: #eeeeee;
+          }
+          #sc-iframe {
+            margin: 0;
+            padding: 0;
+            z-index: 1;
+            width: 100%;
+            height: 100vh;
+            border: none;
+            overflow: hidden;
+          }
+        </style>
+      </head>
+      <body>
+        <iframe
+          id="sc-iframe" allowTransparency="true"
+          src="https://efx-dev.stitchcredit.com/login-aio?key=5a10e0d7-1dc8-4325-929f-d0d131990527"
+        ></iframe>
+        <script>
+        //this just throws in a default ID if one isn't provided on the query string
+        const id = document.location.search.length > 0 ? document.location.search.split('&')[0].split('=')[1] : '988a6fd7-7297-4757-8b96-907daa14a1f6';
+        console.log("ID: ",id);
+        console.log("Loading Message Listener...");
+
+        window.addEventListener("message", receiveMessage, false);
+
+        function receiveMessage(event) {
+            if(event && event.source && event.data) {
+                // You only need to implement the types that are important/relevant to your use case.
+                if(event.data.type === 'AUTH_REQUIRED') {
+                    //The iframe clident will post this message when a valid preauth token does not exist.
+                    //Posting a proper message with a preauth token in response allows the client to continue seemlessly.
+                    //console.log("Auth Required Event Received");
+                    const es = event.source;
+                    //this code uses a test endpoint on the server to provide a preauth-token for any user ID without the usual hurdles.
+                    //This is ONLY for testing and does not exist in the production environment.
+                    getData("https://efx-dev.stitchcredit.com/api/test/preauth-token/"+id, function() {
+                        const token = JSON.parse(this.responseText).token;
+                        console.log("Status: ", this.status, ", token: ", token);
+                        es.postMessage({type: 'PREAUTH', token: this.status == 200 ? token : null},"*");
+                    });
+                }
+                else if(event.data.type === 'REG_STARTED') {
+                    //only valid for full web implementation, Direct API already creates the customer, so this will never happen in those instances
+                    es.postMessage({type: 'REG', data: {fname:"Gertrude", lname:"Harkenreadeo", email: "bryan+21@test.com", mobile: "0000000000"}},"*");
+                }
+                else if(event.data.type === 'IDENTITY_STARTED') {
+                    //You could use this function to pre-populate the given fields.  DoB and SSN will never be prepopulated as it violates compliance
+                    es.postMessage({type: 'IDENTITY', data: {street1:"", street2: "", city: "", state: "", zip: ""}},"*");
+                }
+                else if(event.data.type === 'LOGIN_SUCCESSFUL') {
+                    console.log("User succesfully logged in");
+                }
+                else if(event.data.type === 'LOGIN_FAILED') {
+                    //if you see this message more than a few times in a row, it's likely an issue
+                    //typically this will only occur for full web implementations, not Direct API
+                    console.log("User login failed");
+                }
+                else if(event.data.type === 'USER_ENROLLED') {
+                    //User successfully completed identity and has been enrolled for consumer data
+                    console.log("User enrollment successful");
+                }
+                else if(event.data.type === 'IDENTITY_FAILED') {
+                    //Identity process failed, user is likely "stuck" as they cannot continue
+                    console.log("User identity failure");
+                }
+                else if(event.data.type === 'SERVICE_FAILURE') {
+                    //Identity process failed most likely due to a service outage, but the user is stuck as they cannot continue without passing identity
+                    console.log("Identity service failure");
+                }
+            }
+
+            function getData(req, action) {
+            var xhr = new XMLHttpRequest();
+                xhr.responesType = 'json';
+                xhr.onload = action;
+                xhr.open("GET", req);
+                xhr.setRequestHeader("Content-Type", "application/json");
+                xhr.send();
+            }
+
+        }
+        </script>
+      </body>
+    </html>
+    ```
+- name: Tile User Interface with dynamic Consumer Authentication
+  description: |
+    <h3>Tile User Interface with dynamic Consumer Authentication integration</h3>
+    
+    _tile_sample.html:_
+
+    ```HTML
+    <html>
+      <head>
+        <title>StitchCredit</title>
+        <link rel="icon" href="/favicon.ico" />
+        <meta name="description" content="StitchCredit Consumer Credit Reports" />
+        <meta
+          name="viewport"
+          content="minimum-scale=1, initial-scale=1, width=device-width"
+        />
+        <style>
+          html,
+          body {
+            margin: 0;
+            padding: 0;
+            position: relative;
+            background: #eeeeee;
+          }
+          #sc-iframe {
+            display:block;
+            margin: 0 auto;
+            padding: 0;
+            z-index: 1;
+            width: 500px;
+            height: 675px;
+            border: none;
+            overflow: hidden;
+          }
+        </style>
+      </head>
+      <body>
+        <iframe
+          id="sc-iframe" allowTransaparency="true"
+          src="https://efx-dev.stitchcredit.com/login-tile?key=5a10e0d7-1dc8-4325-929f-d0d131990527"
+        ></iframe>
+        <script>
+        //this just throws in a default ID if one isn't provided on the query string
+        const id = document.location.search.length > 0 ? document.location.search.split('&')[0].split('=')[1] : '988a6fd7-7297-4757-8b96-907daa14a1f6';
+        console.log("ID: ",id);
+        console.log("Loading Message Listener...");
+
+        window.addEventListener("message", receiveMessage, false);
+
+        function receiveMessage(event) {
+            if(event && event.source && event.data) {
+                // You only need to implement the types that are important/relevant to your use case.
+                if(event.data.type === 'AUTH_REQUIRED') {
+                    //The iframe clident will post this message when a valid preauth token does not exist.
+                    //Posting a proper message with a preauth token in response allows the client to continue seemlessly.
+                    //console.log("Auth Required Event Received");
+                    const es = event.source;
+                    //this code uses a test endpoint on the server to provide a preauth-token for any user ID without the usual hurdles.
+                    //This is ONLY for testing and does not exist in the production environment.
+                    getData("https://efx-dev.stitchcredit.com/api/test/preauth-token/"+id, function() {
+                        const token = JSON.parse(this.responseText).token;
+                        console.log("Status: ", this.status, ", token: ", token);
+                        es.postMessage({type: 'PREAUTH', token: this.status == 200 ? token : null},"*");
+                    });
+                }
+                else if(event.data.type === 'REG_STARTED') {
+                    //only valid for full web implementation, Direct API already creates the customer, so this will never happen in those instances
+                    es.postMessage({type: 'REG', data: {fname:"Gertrude", lname:"Harkenreadeo", email: "bryan+21@test.com", mobile: "0000000000"}},"*");
+                }
+                else if(event.data.type === 'IDENTITY_STARTED') {
+                    //You could use this function to pre-populate the given fields.  DoB and SSN will never be prepopulated as it violates compliance
+                    es.postMessage({type: 'IDENTITY', data: {street1:"", street2: "", city: "", state: "", zip: ""}},"*");
+                }
+                else if(event.data.type === 'LOGIN_SUCCESSFUL') {
+                    console.log("User succesfully logged in");
+                }
+                else if(event.data.type === 'LOGIN_FAILED') {
+                    //if you see this message more than a few times in a row, it's likely an issue
+                    //typically this will only occur for full web implementations, not Direct API
+                    console.log("User login failed");
+                }
+                else if(event.data.type === 'USER_ENROLLED') {
+                    //User successfully completed identity and has been enrolled for consumer data
+                    console.log("User enrollment successful");
+                }
+                else if(event.data.type === 'IDENTITY_FAILED') {
+                    //Identity process failed, user is likely "stuck" as they cannot continue
+                    console.log("User identity failure");
+                }
+                else if(event.data.type === 'SERVICE_FAILURE') {
+                    //Identity process failed most likely due to a service outage, but the user is stuck as they cannot continue without passing identity
+                    console.log("Identity service failure");
+                }
+            }
+
+            function getData(req, action) {
+            var xhr = new XMLHttpRequest();
+                xhr.responesType = 'json';
+                xhr.onload = action;
+                xhr.open("GET", req);
+                xhr.setRequestHeader("Content-Type", "application/json");
+                xhr.send();
+            }
+
+        }
+        </script>
+      </body>
+    </html>
+    ```
+- name: Tile User Interface with dynamic Consumer Authentication integration and configuration display flags override
+  description: |
+    <h3>Tile User Interface with dynamic Consumer Authentication integration and configuration display flags override</h3>
+    
+    _tile_sample_score_only.html:_
+
+    ```HTML
+    <html>
+      <head>
+        <title>StitchCredit</title>
+        <link rel="icon" href="/favicon.ico" />
+        <meta name="description" content="StitchCredit Consumer Credit Reports" />
+        <meta
+          name="viewport"
+          content="minimum-scale=1, initial-scale=1, width=device-width"
+        />
+        <style>
+          html,
+          body {
+            margin: 0;
+            padding: 0;
+            position: relative;
+            background: #eeeeee;
+          }
+          #sc-iframe {
+            display:block;
+            margin: 0 auto;
+            padding: 0;
+            z-index: 1;
+            width: 500px;
+            height: 550px;
+            border: none;
+            overflow: hidden;
+          }
+        </style>
+      </head>
+      <body>
+        <iframe
+          id="sc-iframe" allowTransaparency="true"
+          src="https://efx-dev.stitchcredit.com/login-tile?key=5a10e0d7-1dc8-4325-929f-d0d131990527&ocf=1"
+        ></iframe>
+        <script>
+        //this just throws in a default ID if one isn't provided on the query string
+        const id = document.location.search.length > 0 ? document.location.search.split('&')[0].split('=')[1] : '988a6fd7-7297-4757-8b96-907daa14a1f6';
+        console.log("ID: ",id);
+        console.log("Loading Message Listener...");
+
+        window.addEventListener("message", receiveMessage, false);
+
+        function receiveMessage(event) {
+            if(event && event.source && event.data) {
+                // You only need to implement the types that are important/relevant to your use case.
+                if(event.data.type === 'AUTH_REQUIRED') {
+                    //The iframe clident will post this message when a valid preauth token does not exist.
+                    //Posting a proper message with a preauth token in response allows the client to continue seemlessly.
+                    //console.log("Auth Required Event Received");
+                    const es = event.source;
+                    //this code uses a test endpoint on the server to provide a preauth-token for any user ID without the usual hurdles.
+                    //This is ONLY for testing and does not exist in the production environment.
+                    getData("https://efx-dev.stitchcredit.com/api/test/preauth-token/"+id, function() {
+                        const token = JSON.parse(this.responseText).token;
+                        console.log("Status: ", this.status, ", token: ", token);
+                        es.postMessage({type: 'PREAUTH', token: this.status == 200 ? token : null},"*");
+                    });
+                }
+                else if(event.data.type === 'REG_STARTED') {
+                    //only valid for full web implementation, Direct API already creates the customer, so this will never happen in those instances
+                    es.postMessage({type: 'REG', data: {fname:"Gertrude", lname:"Harkenreadeo", email: "bryan+21@test.com", mobile: "0000000000"}},"*");
+                }
+                else if(event.data.type === 'IDENTITY_STARTED') {
+                    //You could use this function to pre-populate the given fields.  DoB and SSN will never be prepopulated as it violates compliance
+                    es.postMessage({type: 'IDENTITY', data: {street1:"", street2: "", city: "", state: "", zip: ""}},"*");
+                }
+                else if(event.data.type === 'LOGIN_SUCCESSFUL') {
+                    console.log("User succesfully logged in");
+                }
+                else if(event.data.type === 'LOGIN_FAILED') {
+                    //if you see this message more than a few times in a row, it's likely an issue
+                    //typically this will only occur for full web implementations, not Direct API
+                    console.log("User login failed");
+                }
+                else if(event.data.type === 'USER_ENROLLED') {
+                    //User successfully completed identity and has been enrolled for consumer data
+                    console.log("User enrollment successful");
+                }
+                else if(event.data.type === 'IDENTITY_FAILED') {
+                    //Identity process failed, user is likely "stuck" as they cannot continue
+                    console.log("User identity failure");
+                }
+                else if(event.data.type === 'SERVICE_FAILURE') {
+                    //Identity process failed most likely due to a service outage, but the user is stuck as they cannot continue without passing identity
+                    console.log("Identity service failure");
+                }
+            }
+
+            function getData(req, action) {
+            var xhr = new XMLHttpRequest();
+                xhr.responesType = 'json';
+                xhr.onload = action;
+                xhr.open("GET", req);
+                xhr.setRequestHeader("Content-Type", "application/json");
+                xhr.send();
+            }
+
+        }
+        </script>
+      </body>
+    </html>
+    ```
+
+
+
+x-tagGroups:
+  - name: Quickstart Integrations
+    tags:
+      - Simple Web Integration
+      - Web Integration with Customer Authentication
+      - App Integration
+      - Create New User
+      - Returning User
+  - name: Sample Files
+    tags:
+      - Tabbed User Interface with dynamic Consumer Authentication
+      - All-in-One User Interface with dynamic Consumer Authentication
+      - Tile User Interface with dynamic Consumer Authentication
+      - Tile User Interface with dynamic Consumer Authentication integration and configuration display flags override
+  - name: Tokens
+    tags:
+      - Token Validity Times
+  - name: Compliance
+    tags:
+      - Overview
+      - Registration
+      - Identity
+      - Mobile Identification (Option 1)
+      - Identity Quiz (Option 2)
+      - Credit Score - Dashboard
+      - Credit Report
+      - Credit Monitoring
+      - Identity Restoration
+  - name: Flows 
+    tags:
+      - API Process Flow
+      - Communication & Token Flow
+  - name: Direct API
+    tags: 
+      - Direct API Integration Guide
+      - Change User Host
+      - Update Data Refresh Date [PREMIUM FEATURE]
+  - name: APIs
+    tags:
+      - Direct API
+      - User API
+
+
+
+      
+      
+    
